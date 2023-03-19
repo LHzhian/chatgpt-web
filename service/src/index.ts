@@ -1,8 +1,9 @@
 import express from 'express'
+import axios from 'axios'
 import type { ChatContext, ChatMessage } from './chatgpt'
 import { chatConfig, chatReplyProcess, currentModel } from './chatgpt'
 import { auth } from './middleware/auth'
-import { isNotEmptyString } from './utils/is'
+import { redix } from './middleware/redix'
 
 const app = express()
 const router = express.Router()
@@ -48,9 +49,19 @@ router.post('/config', async (req, res) => {
 
 router.post('/session', async (req, res) => {
   try {
-    const AUTH_SECRET_KEY = process.env.AUTH_SECRET_KEY
-    const hasAuth = isNotEmptyString(AUTH_SECRET_KEY)
-    res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel() } })
+    const { token } = req.body as { token: string }
+    let hasAuth = false
+    let username = ''
+    if (token == null || !token) {
+      hasAuth = true
+    }
+    else {
+      redix.get(`TOKEN:${token}`).then((res) => {
+        hasAuth = !res != null && res as boolean
+        username = res as string
+      })
+    }
+    res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel(), username } })
   }
   catch (error) {
     res.send({ status: 'Fail', message: error.message, data: null })
@@ -59,14 +70,28 @@ router.post('/session', async (req, res) => {
 
 router.post('/verify', async (req, res) => {
   try {
-    const { token } = req.body as { token: string }
-    if (!token)
-      throw new Error('Secret key is empty')
+    const { token, account } = req.body as { token: string; account: string }
+    if (!account || !token)
+      throw new Error('账号或密码不能为空')
 
-    if (process.env.AUTH_SECRET_KEY !== token)
-      throw new Error('密钥无效 | Secret key is invalid')
-
-    res.send({ status: 'Success', message: 'Verify successfully', data: null })
+    // todo 登录
+    const param = new URLSearchParams()
+    param.append('username', account)
+    param.append('password', token)
+    axios.post(`${process.env.ADMIN_API_BASE_URL}/simlogin`, param)
+      .then((resp) => {
+        if (resp.data.code === 200 && resp.data.data !== '' && resp.data.data) {
+          redix.set(`TOKEN:${resp.data.data.token}`, resp.data.data.username, 86400)
+          res.send({ status: 'Success', message: 'Success', data: { token: resp.data.data.token, username: resp.data.data.username } })
+        }
+        else {
+          res.send({ status: 'Fail', message: resp.data.msg, data: '' })
+        }
+      })
+      .catch((resp) => {
+        globalThis.console.log('系统异常：', resp)
+        res.send({ status: 'Fail', message: '系统异常，请联系技术人员', data: '' })
+      })
   }
   catch (error) {
     res.send({ status: 'Fail', message: error.message, data: null })

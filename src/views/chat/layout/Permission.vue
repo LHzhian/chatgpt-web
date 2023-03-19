@@ -17,19 +17,22 @@ const ms = useMessage()
 
 const loading = ref(false)
 const token = ref('')
+const username = ref('')
 
 const disabled = computed(() => !token.value.trim() || loading.value)
 
 async function handleVerify() {
   const secretKey = token.value.trim()
+  const account = username.value.trim()
 
-  if (!secretKey)
+  if (!account || !secretKey)
     return
 
   try {
     loading.value = true
-    await fetchVerify(secretKey)
-    authStore.setToken(secretKey)
+    const res = await fetchVerify(account, secretKey)
+    authStore.setToken(res.data.token as string)
+    authStore.setUsername(res.data.username as string)
     ms.success('success')
     window.location.reload()
   }
@@ -64,7 +67,8 @@ function handlePress(event: KeyboardEvent) {
           </p>
           <Icon403 class="w-[200px] m-auto" />
         </header>
-        <NInput v-model:value="token" type="password" placeholder="" @keypress="handlePress" />
+        <NInput v-model:value="username" type="text" placeholder="账号" />
+        <NInput v-model:value="token" type="password" placeholder="密码" @keypress="handlePress" />
         <NButton
           block
           type="primary"
