@@ -64,12 +64,6 @@ function updateUserInfo(options: Partial<UserInfo>) {
   ms.success(t('common.success'))
 }
 
-function handleReset() {
-  userStore.resetUserInfo()
-  ms.success(t('common.success'))
-  window.location.reload()
-}
-
 function exportData(): void {
   const date = getCurrentDate()
   const data: string = localStorage.getItem('chatStorage') || '{}'
@@ -137,7 +131,7 @@ function handleImportButtonClick(): void {
         <div class="w-[200px]">
           <NInput v-model:value="name" placeholder="" />
         </div>
-        <NButton size="tiny" text type="primary" @click="updateUserInfo({ name })">
+        <NButton size="tiny" text type="primary">
           {{ $t('common.save') }}
         </NButton>
       </div>
@@ -146,7 +140,7 @@ function handleImportButtonClick(): void {
         <div class="flex-1">
           <NInput v-model:value="description" placeholder="" />
         </div>
-        <NButton size="tiny" text type="primary" @click="updateUserInfo({ description })">
+        <NButton size="tiny" text type="primary" >
           {{ $t('common.save') }}
         </NButton>
       </div>
@@ -215,7 +209,7 @@ function handleImportButtonClick(): void {
       </div>
       <div class="flex items-center space-x-4">
         <span class="flex-shrink-0 w-[100px]">{{ $t('setting.resetUserInfo') }}</span>
-        <NButton size="small" @click="handleReset">
+        <NButton size="small" >
           {{ $t('common.reset') }}
         </NButton>
       </div>
