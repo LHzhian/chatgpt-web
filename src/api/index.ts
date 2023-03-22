@@ -34,14 +34,14 @@ export function fetchChatAPIProcess<T = any>(
   })
 }
 
-export function fetchSession<T>(token: string) {
+export function fetchSession<T = any>(token: string) {
   return post<T>({
     url: '/session',
     data: { token },
   })
 }
 
-export function fetchVerify<T>(account: string, token: string) {
+export function fetchVerify<T = any>(account: string, token: string) {
   return post<T>({
     url: '/verify',
     data: { token, account },
