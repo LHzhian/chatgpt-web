@@ -6,7 +6,7 @@ const redis = require('redis')
 
 const redis_config = {
   host: process.env.REDIS_URL,
-  port: process.env.PORT,
+  port: process.env.REDIS_PORT,
 }
 
 const url = `redis://${redis_config.host}:${redis_config.port}`

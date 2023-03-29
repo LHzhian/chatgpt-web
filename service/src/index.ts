@@ -98,6 +98,35 @@ router.post('/verify', async (req, res) => {
   }
 })
 
+router.post('/register', async (req, res) => {
+  try {
+    const { account, password, comfirm } = req.body as { account: string; password: string; comfirm: string }
+    if (password !== comfirm)
+      throw new Error('密码不一致')
+    if (!account.trim() || !password.trim)
+      throw new Error('账号或密码不能为空')
+
+    // 注册
+    const param = new URLSearchParams()
+    param.append('username', account)
+    param.append('password', password)
+    axios.post(`${process.env.ADMIN_API_BASE_URL}/register`, param)
+      .then((resp) => {
+        if (resp.data.code === 200)
+          res.send({ status: 'Success', message: 'Success', data: '' })
+        else
+          res.send({ status: 'Fail', message: resp.data.msg, data: '' })
+      })
+      .catch((resp) => {
+        globalThis.console.log('系统异常：', resp)
+        res.send({ status: 'Fail', message: '系统异常，请联系技术人员', data: '' })
+      })
+  }
+  catch (error) {
+    res.send({ status: 'Fail', message: error.message, data: null })
+  }
+})
+
 app.use('', router)
 app.use('/api', router)
 

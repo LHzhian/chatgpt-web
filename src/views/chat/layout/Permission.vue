@@ -1,6 +1,7 @@
 <script setup lang='ts'>
 import { computed, ref } from 'vue'
 import { NButton, NInput, NModal, useMessage } from 'naive-ui'
+import Register from './Register.vue'
 import { fetchVerify } from '@/api'
 import { useAuthStore } from '@/store'
 import Icon403 from '@/icons/403.vue'
@@ -18,8 +19,10 @@ const ms = useMessage()
 const loading = ref(false)
 const token = ref('')
 const username = ref('')
+const regist = ref(false)
 
 const disabled = computed(() => !token.value.trim() || loading.value)
+const needReg = computed(() => regist.value)
 
 async function handleVerify() {
   const secretKey = token.value.trim()
@@ -52,6 +55,14 @@ function handlePress(event: KeyboardEvent) {
     handleVerify()
   }
 }
+
+function register(event: KeyboardEvent) {
+  regist.value = true
+}
+
+function closeReg() {
+  regist.value = false
+}
 </script>
 
 <template>
@@ -60,7 +71,7 @@ function handlePress(event: KeyboardEvent) {
       <div class="space-y-4">
         <header class="space-y-2">
           <h2 class="text-2xl font-bold text-center text-slate-800 dark:text-neutral-200">
-            403
+            登录
           </h2>
           <p class="text-base text-center text-slate-500 dark:text-slate-500">
             {{ $t('common.unauthorizedTips') }}
@@ -78,7 +89,16 @@ function handlePress(event: KeyboardEvent) {
         >
           {{ $t('common.verify') }}
         </NButton>
+        <NButton
+          block
+          type="default"
+          :loading="loading"
+          @click="register"
+        >
+          {{ $t('common.register') }}
+        </NButton>
       </div>
     </div>
   </NModal>
+  <Register :reg-visible="needReg" @closeReg="closeReg" />
 </template>

@@ -26,6 +26,8 @@ export default {
     failed: '操作失敗',
     verify: '驗證',
     unauthorizedTips: '未經授權，請先進行驗證。',
+    register: '註冊',
+    turnback: '返回',
   },
   chat: {
     placeholder: '來說點什麼...（Shift + Enter = 換行）',

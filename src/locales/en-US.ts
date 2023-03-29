@@ -26,6 +26,8 @@ export default {
     failed: 'Failed',
     verify: 'Verify',
     unauthorizedTips: 'Unauthorized, please verify first.',
+    register: 'Register',
+    turnback: 'Turn back',
   },
   chat: {
     placeholder: 'Ask me anything...(Shift + Enter = line break)',
