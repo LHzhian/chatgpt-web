@@ -56,7 +56,7 @@ function handlePress(event: KeyboardEvent) {
   }
 }
 
-function register(event: KeyboardEvent) {
+function register() {
   regist.value = true
 }
 
