@@ -1,26 +1,19 @@
-import { isNotEmptyString } from '../utils/is'
 import { redix } from './redix'
 
 const auth = async (req, res, next) => {
-  const AUTH_SECRET_KEY = process.env.AUTH_SECRET_KEY
-  if (isNotEmptyString(AUTH_SECRET_KEY)) {
-    try {
-      const Authorization = req.header('Authorization')
-      if (!Authorization)
-        throw new Error('Error: 无访问权限 | No access rights')
-      redix.get(`TOKEN:${Authorization.replace('Bearer ', '').trim()}`).then((r) => {
-        if (!r)
-          res.send({ status: 'Unauthorized', message: '请先登录' ?? 'Please authenticate.', data: null })
-        else
-          next()
-      })
-    }
-    catch (error) {
-      res.send({ status: 'Unauthorized', message: error.message ?? 'Please authenticate.', data: null })
-    }
+  try {
+    const Authorization = req.header('Authorization')
+    if (!Authorization)
+      throw new Error('Error: 无访问权限 | No access rights')
+    redix.get(`TOKEN:${Authorization.replace('Bearer ', '').trim()}`).then((r) => {
+      if (!r)
+        res.send({ status: 'Unauthorized', message: '请先登录' ?? 'Please authenticate.', data: null })
+      else
+        next()
+    })
   }
-  else {
-    next()
+  catch (error) {
+    res.send({ status: 'Unauthorized', message: error.message ?? 'Please authenticate.', data: null })
   }
 }
 
