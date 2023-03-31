@@ -2,7 +2,7 @@ import express from 'express'
 import axios from 'axios'
 import type { ChatContext, ChatMessage } from './chatgpt'
 import { chatConfig, chatReplyProcess, currentModel } from './chatgpt'
-import { auth } from './middleware/auth'
+import { auth, cutdown } from './middleware/auth'
 import { redix } from './middleware/redix'
 
 const app = express()
@@ -18,7 +18,7 @@ app.all('*', (_, res, next) => {
   next()
 })
 
-router.post('/chat-process', auth, async (req, res) => {
+router.post('/chat-process', [auth, cutdown], async (req, res) => {
   res.setHeader('Content-type', 'application/octet-stream')
 
   try {
@@ -53,15 +53,19 @@ router.post('/session', async (req, res) => {
     let hasAuth = false
     let username = ''
     if (token == null || !token) {
-      hasAuth = true
+      hasAuth = false
+      globalThis.console.log('data1:', { auth: hasAuth, model: currentModel() })
+      res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel(), username } })
     }
     else {
-      redix.get(`TOKEN:${token}`).then((res) => {
-        hasAuth = !res != null && res as boolean
-        username = res as string
+      await redix.get(`TOKEN:${token}`).then((rr) => {
+        hasAuth = rr != null && rr !== undefined && rr !== ''
+        username = rr as string
+
+        globalThis.console.log('data:', { auth: hasAuth, model: currentModel() })
+        res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel(), username } })
       })
     }
-    res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel(), username } })
   }
   catch (error) {
     res.send({ status: 'Fail', message: error.message, data: null })

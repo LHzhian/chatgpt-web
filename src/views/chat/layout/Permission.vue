@@ -92,7 +92,6 @@ function closeReg() {
         <NButton
           block
           type="default"
-          :loading="loading"
           @click="register"
         >
           {{ $t('common.register') }}

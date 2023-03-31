@@ -2,7 +2,7 @@
 * @Author kjprime
 * @description redis4.0数据库模块
 */
-const redis = require('redis')
+import { createClient } from 'redis'
 
 const redis_config = {
   host: process.env.REDIS_URL,
@@ -11,7 +11,7 @@ const redis_config = {
 
 const url = `redis://${redis_config.host}:${redis_config.port}`
 
-const redisClient = redis.createClient({ url })
+const redisClient = createClient({ url })
 
 redisClient.on('ready', () => {
   globalThis.console.log('redis is ready...')
@@ -21,30 +21,30 @@ redisClient.on('error', (err) => {
   globalThis.console.error(err)
 })
 
-async function fun(callback, key, value) {
-  return new Promise(async (res, rej) => {
+async function fun(callback, key, value, expire) {
+  return new Promise(async (resolve, reject) => {
     await redisClient.connect() // 连接
-    const ok = callback(key, value) // 成功ok
+    const ok = callback(key, value, expire) // 成功ok
     await redisClient.quit() // 关闭
-    res(ok)
+    resolve(ok)
   })
 }
 
 const redix = {
   async set(key, value, expire) {
     return fun(async () => {
-      return await redisClient.set(key, value, expire)
-    }, key, value)
+      return await redisClient.setEx(key, expire, value)
+    }, key, value, expire)
   },
   async get(key) {
     return fun(async () => {
       return await redisClient.get(key)
-    }, key)
+    }, key, 1, 1)
   },
   async del(key) {
     return fun(async () => {
       return await redisClient.del(key)
-    }, key)
+    }, key, 1, 1)
   },
 }
 
