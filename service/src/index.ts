@@ -60,8 +60,8 @@ router.post('/session', async (req, res) => {
     else {
       await redix.get(`TOKEN:${token}`).then((rr) => {
         hasAuth = rr != null && rr !== undefined && rr !== ''
-        username = rr as string
-
+        const reJson = JSON.parse(rr as string)
+        username = reJson.username
         globalThis.console.log('data:', { auth: hasAuth, model: currentModel() })
         res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel(), username } })
       })
@@ -85,7 +85,8 @@ router.post('/verify', async (req, res) => {
     axios.post(`${process.env.ADMIN_API_BASE_URL}/simlogin`, param)
       .then((resp) => {
         if (resp.data.code === 200 && resp.data.data !== '' && resp.data.data) {
-          redix.set(`TOKEN:${resp.data.data.token}`, resp.data.data.username, 86400)
+          const val = { username: resp.data.data.username, roles: resp.data.data.roles }
+          redix.set(`TOKEN:${resp.data.data.token}`, JSON.stringify(val), 86400)
           res.send({ status: 'Success', message: 'Success', data: { token: resp.data.data.token, username: resp.data.data.username } })
         }
         else {

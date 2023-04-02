@@ -24,6 +24,13 @@ async function reg() {
   const cfm = comfirm.value.trim()
   const name = username.value.trim()
 
+  const regEmail = /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+(\.[a-zA-Z0-9_-])+/
+  const regMobile = /^(0|86|17951)?(13[0-9]|15[012356789]|17[678]|18[0-9]|14[57])[0-9]{8}$/
+  if (!regEmail.test(name) && !regMobile.test(name)) {
+    ms.warning('账号格式不正确，请使用正确邮箱或手机号')
+    return
+  }
+
   if (pwd !== cfm) {
     ms.warning('两次密码不一致')
     return
