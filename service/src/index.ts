@@ -76,13 +76,16 @@ router.post('/session', async (req, res) => {
     }
     else {
       await redix.get(`TOKEN:${token}`).then((rr) => {
-        if (!rr)
+        if (!rr) {
           res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel(), username } })
-        hasAuth = rr != null && rr !== undefined && rr !== ''
-        const reJson = JSON.parse(rr as string)
-        username = reJson.username
-        globalThis.console.log('data:', { auth: hasAuth, model: currentModel() })
-        res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel(), username } })
+        }
+        else {
+          hasAuth = rr != null && rr !== undefined && rr !== ''
+          const reJson = JSON.parse(rr as string)
+          username = reJson.username
+          globalThis.console.log('data:', { auth: hasAuth, model: currentModel() })
+          res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel(), username } })
+        }
       })
     }
   }
