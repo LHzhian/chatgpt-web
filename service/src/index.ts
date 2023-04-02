@@ -21,20 +21,35 @@ app.all('*', (_, res, next) => {
 router.post('/chat-process', [auth, cutdown], async (req, res) => {
   res.setHeader('Content-type', 'application/octet-stream')
 
-  try {
-    const { prompt, options = {} } = req.body as { prompt: string; options?: ChatContext }
-    let firstChunk = true
-    await chatReplyProcess(prompt, options, (chat: ChatMessage) => {
-      res.write(firstChunk ? JSON.stringify(chat) : `\n${JSON.stringify(chat)}`)
-      firstChunk = false
-    })
+  const { prompt, options = {} } = req.body as { prompt: string; options?: ChatContext }
+  const retryCount = 7 // 重试次数
+  let tries = 0
+
+  const retry = async () => {
+    try {
+      console.log("调用openai开始")
+      let firstChunk = true
+      await chatReplyProcess(prompt, options, (chat: ChatMessage) => {
+          res.write(firstChunk ? JSON.stringify(chat) : `\n${JSON.stringify(chat)}`)
+          firstChunk = false
+      })
+      console.log("写入完成")
+      res.end()
+    } catch (error) {
+      console.log(error)
+      tries++
+      if (tries <= retryCount) {
+        // 如果重试次数未达到上限，则延迟 1 秒后再次尝试
+        setTimeout(retry, 1000)
+      } else {
+        // 如果重试次数已经达到上限，则向客户端发送错误响应
+        res.status(500).json({ error: `Failed after ${retryCount} retries` })
+        res.end()
+      }
+    }
   }
-  catch (error) {
-    res.write(JSON.stringify(error))
-  }
-  finally {
-    res.end()
-  }
+
+  retry()
 })
 
 router.post('/config', async (req, res) => {

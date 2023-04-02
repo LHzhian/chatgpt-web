@@ -25,7 +25,7 @@ export default {
     success: '操作成功',
     failed: '操作失败',
     verify: '验证',
-    unauthorizedTips: '未经授权，请先进行验证。',
+    unauthorizedTips: '开通会员账号找微信: by11338',
     register: '注册',
     turnback: '返回',
   },
