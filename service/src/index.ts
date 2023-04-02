@@ -27,21 +27,23 @@ router.post('/chat-process', [auth, cutdown], async (req, res) => {
 
   const retry = async () => {
     try {
-      console.log("调用openai开始")
+      console.log('调用openai开始')
       let firstChunk = true
       await chatReplyProcess(prompt, options, (chat: ChatMessage) => {
-          res.write(firstChunk ? JSON.stringify(chat) : `\n${JSON.stringify(chat)}`)
-          firstChunk = false
+        res.write(firstChunk ? JSON.stringify(chat) : `\n${JSON.stringify(chat)}`)
+        firstChunk = false
       })
-      console.log("写入完成")
+      console.log('写入完成')
       res.end()
-    } catch (error) {
+    }
+    catch (error) {
       console.log(error)
       tries++
       if (tries <= retryCount) {
         // 如果重试次数未达到上限，则延迟 1 秒后再次尝试
         setTimeout(retry, 1000)
-      } else {
+      }
+      else {
         // 如果重试次数已经达到上限，则向客户端发送错误响应
         res.status(500).json({ error: `Failed after ${retryCount} retries` })
         res.end()
@@ -74,6 +76,8 @@ router.post('/session', async (req, res) => {
     }
     else {
       await redix.get(`TOKEN:${token}`).then((rr) => {
+        if (!rr)
+          res.send({ status: 'Success', message: '', data: { auth: hasAuth, model: currentModel(), username } })
         hasAuth = rr != null && rr !== undefined && rr !== ''
         const reJson = JSON.parse(rr as string)
         username = reJson.username
