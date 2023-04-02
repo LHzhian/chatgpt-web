@@ -25,7 +25,7 @@ const cutdown = async (req, res, next) => {
     const token = `${Authorization.replace('Bearer ', '').trim()}`
     const cnt = await redix.get(`PERMISSION:${token}`) as string
     const count = cnt ? parseInt(cnt) : 0
-    if (count > 5) {
+    if (false) {
       res.send({ status: 'Fail', message: '今天免费次数已超额，请明天再使用，或者添加微信：by11338，成为会员后无次数限制', data: null })
     }
     else {
