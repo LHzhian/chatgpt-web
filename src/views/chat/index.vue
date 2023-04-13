@@ -147,7 +147,9 @@ async function onConversation() {
     await fetchChatAPIOnce()
   }
   catch (error: any) {
-    const errorMessage = error?.message ?? t('common.wrong')
+    console.log('err3:')
+    console.log(error)
+    const errorMessage = error?.message ?? ''
 
     if (error.message === 'canceled') {
       updateChatSome(
@@ -168,7 +170,7 @@ async function onConversation() {
         +uuid,
         dataSources.value.length - 1,
         {
-          text: `${currentChat.text}\n[${errorMessage}]`,
+          text: `${currentChat.text}\n${errorMessage}`,
           error: false,
           loading: false,
         },
@@ -284,7 +286,8 @@ async function onRegenerate(index: number) {
       )
       return
     }
-
+    console.log('err:')
+    console.log(error)
     const errorMessage = error?.message ?? t('common.wrong')
 
     updateChat(

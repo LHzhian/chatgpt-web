@@ -28,8 +28,12 @@ router.post('/chat-process', [auth, cutdown], async (req, res) => {
   const retry = async () => {
     try {
       console.log('调用openai开始')
+      console.time('调用API');
       let firstChunk = true
       await chatReplyProcess(prompt, options, (chat: ChatMessage) => {
+        if(firstChunk) {
+          console.timeEnd('调用API'); 
+	}
         res.write(firstChunk ? JSON.stringify(chat) : `\n${JSON.stringify(chat)}`)
         firstChunk = false
       })
