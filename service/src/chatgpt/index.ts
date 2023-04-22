@@ -6,9 +6,11 @@ import { SocksProxyAgent } from 'socks-proxy-agent'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import fetch from 'node-fetch'
 import axios from 'axios'
+import { tokenError } from 'src/utils/error'
 import { sendResponse } from '../utils'
 import { isNotEmptyString } from '../utils/is'
 import type { ApiModel, ChatContext, ChatGPTUnofficialProxyAPIOptions, ModelConfig } from '../types'
+import { redix } from '../middleware/redis'
 
 const ErrorCodeMessage: Record<string, string> = {
   401: '[OpenAI] 提供错误的API密钥 | Incorrect API key provided',
@@ -17,6 +19,7 @@ const ErrorCodeMessage: Record<string, string> = {
   503: '[OpenAI] 服务器繁忙，请稍后再试 | Server is busy, please try again later',
   504: '[OpenAI] 网关超时 | Gateway Time-out',
   500: '[OpenAI] 服务器繁忙，请稍后再试 | Internal Server Error',
+  600: '[OpenAI] 通道忙碌，请稍后再试 | Channel is busy, please try again later',
 }
 
 dotenv.config()
@@ -65,6 +68,8 @@ let api: ChatGPTAPI | ChatGPTUnofficialProxyAPI
     api = new ChatGPTUnofficialProxyAPI({ ...options })
     apiModel = 'ChatGPTUnofficialProxyAPI'
   }
+  // 初始化访问锁
+  setupLocks()
 })()
 
 async function chatReplyProcess(
@@ -92,8 +97,11 @@ async function chatReplyProcess(
     return sendResponse({ type: 'Success', data: response })
   }
   catch (error: any) {
-    const code = error.statusCode
+    global.console.log(error === tokenError)
     global.console.log(error)
+    if (error === tokenError)
+      throw error
+    const code = error.statusCode
     if (Reflect.has(ErrorCodeMessage, code))
       return sendResponse({ type: 'Fail', message: ErrorCodeMessage[code] })
     return sendResponse({ type: 'Fail', message: error.message ?? 'Please check the back-end console' })
@@ -162,6 +170,64 @@ function currentModel(): ApiModel {
   return apiModel
 }
 
+function setupLocks() {
+  const accessTokens: string[] = process.env.OPENAI_ACCESS_TOKENS.split(',')
+  globalThis.console.log(accessTokens)
+  for (let i = 0; i < accessTokens.length; i++)
+    redix.set(accessTokens[i], '0', 100000000)
+}
+
+async function trylock(authorization: string) {
+  let lock = null
+  if (api instanceof ChatGPTUnofficialProxyAPI) {
+    const val = await redix.get(`AT:${authorization}`) as string
+    if (val) {
+      // 如果是自己占用的，那就继续
+
+      lock = await redix.setNx(`LOCK:${val}`, authorization, 10)
+      // await wait(50000)
+      globalThis.console.log('lock2:', lock)
+      await redix.set(val, authorization, 100000000)
+      await redix.set(`AT:${authorization}`, val, 3600)
+      api.accessToken = val
+      return lock
+    }
+    else {
+      // 第一次访问, 轮询accessTokens，看哪个空闲
+      const accessTokens: string[] = process.env.OPENAI_ACCESS_TOKENS.split(',')
+      for (let i = 0; i < accessTokens.length; i++) {
+        const at = await redix.get(accessTokens[i]) as string
+        if (at) {
+          // 当前accessToken已被占用
+          continue
+        }
+        else {
+          // 轮询到一个accessToken没被占用, ==> 上锁
+          lock = await redix.setNx(`LOCK:${accessTokens[i]}`, authorization, 10)
+          await redix.set(accessTokens[i], authorization, 100000000)
+          await redix.set(`AT:${authorization}`, accessTokens[i], 3600)
+          api.accessToken = accessTokens[i]
+          return lock
+        }
+      }
+      // 如果所有accessTokens都被占用，就随机等待一个
+      const randomNumber = Math.floor(Math.random() * accessTokens.length)
+      api.accessToken = accessTokens[randomNumber]
+      lock = await redix.setNx(`LOCK:${accessTokens[randomNumber]}`, authorization, 10)
+      await redix.set(accessTokens[randomNumber], authorization, 100000000)
+      await redix.set(`AT:${authorization}`, api.accessToken, 3600)
+      return lock
+    }
+  }
+  return lock
+}
+
+async function unlock(authorization: string) {
+  const at = await redix.get(`AT:${authorization}`)
+  if (at)
+    await redix.del(`LOCK:${at}`)
+}
+
 export type { ChatContext, ChatMessage }
 
-export { chatReplyProcess, chatConfig, currentModel }
+export { chatReplyProcess, chatConfig, currentModel, trylock, unlock }

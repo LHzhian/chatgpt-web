@@ -1,9 +1,10 @@
 import express from 'express'
 import axios from 'axios'
 import type { ChatContext, ChatMessage } from './chatgpt'
-import { chatConfig, chatReplyProcess, currentModel } from './chatgpt'
+import { chatConfig, chatReplyProcess, currentModel, trylock, unlock } from './chatgpt'
 import { auth, cutdown } from './middleware/auth'
-import { redix } from './middleware/redix'
+import { redix } from './middleware/redis'
+import { tokenError } from './utils/error'
 
 const app = express()
 const router = express.Router()
@@ -18,30 +19,62 @@ app.all('*', (_, res, next) => {
   next()
 })
 
+function sleep(delay) {
+  const start = (new Date()).getTime()
+  while ((new Date()).getTime() - start < delay) {
+    // 使用  continue 实现；
+    continue
+  }
+}
+
 router.post('/chat-process', [auth, cutdown], async (req, res) => {
   res.setHeader('Content-type', 'application/octet-stream')
 
   const { prompt, options = {} } = req.body as { prompt: string; options?: ChatContext }
-  const retryCount = 7 // 重试次数
+  const authorization = req.header('Authorization').replace('Bearer ', '')
+  const retryCount = 10 // 重试次数
   let tries = 0
+  let lock = null
+  const tryLock = async () => {
+    try {
+      // 上锁
+      lock = await trylock(authorization)
+      global.console.log('锁结果：', lock)
+      if (lock === null || lock === undefined || lock !== 1)
+        throw tokenError
+      return true
+    }
+    catch (error) {
+      globalThis.console.log('error:', error)
+      tries++
+      if (tries <= retryCount) {
+        // 如果重试次数未达到上限，则延迟 1 秒后再次尝试
+        setTimeout(tryLock, 1000)
+      }
+      else {
+        res.write(JSON.stringify({ type: 'Fail', message: '当前通道繁忙，请稍后再试' }))
+        res.end()
+        return false
+      }
+    }
+  }
+
+  const lockres = await tryLock()
+  globalThis.console.log('lockres:', lockres)
+  if (!lockres)
+    return
 
   const retry = async () => {
     try {
-      console.log('调用openai开始')
-      console.time('调用API');
       let firstChunk = true
       await chatReplyProcess(prompt, options, (chat: ChatMessage) => {
-        if(firstChunk) {
-          console.timeEnd('调用API'); 
-	}
         res.write(firstChunk ? JSON.stringify(chat) : `\n${JSON.stringify(chat)}`)
         firstChunk = false
       })
-      console.log('写入完成')
       res.end()
     }
     catch (error) {
-      console.log(error)
+      globalThis.console.log(`error:${error === tokenError}`, error)
       tries++
       if (tries <= retryCount) {
         // 如果重试次数未达到上限，则延迟 1 秒后再次尝试
@@ -54,8 +87,8 @@ router.post('/chat-process', [auth, cutdown], async (req, res) => {
       }
     }
   }
-
-  retry()
+  await retry()
+  await unlock(authorization)
 })
 
 router.post('/config', async (req, res) => {
