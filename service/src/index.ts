@@ -194,4 +194,4 @@ router.post('/register', async (req, res) => {
 app.use('', router)
 app.use('/api', router)
 
-app.listen(3002, () => globalThis.console.log('Server is running on port 3002'))
+app.listen(3012, () => globalThis.console.log('Server is running on port 3012'))
