@@ -197,7 +197,7 @@ async function trylock(authorization: string) {
       const accessTokens: string[] = process.env.OPENAI_ACCESS_TOKENS.split(',')
       for (let i = 0; i < accessTokens.length; i++) {
         const at = await redix.get(accessTokens[i]) as string
-        if (at) {
+        if (at !== '0') {
           // 当前accessToken已被占用
           continue
         }
